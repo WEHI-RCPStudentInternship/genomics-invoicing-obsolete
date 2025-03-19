@@ -55,6 +55,18 @@ http://localhost:8787
 ```
 you should see a window asking for a user name and password. **Use your WSL username and password**. Then you can see your development environment in your browser successfully deployed.
 ### MAC users
-to be filled
-
-
+Mac Terminal does not support .rpm packages. **Make sure the R application is downloaded on you macboook** (check [here](https://cran.r-project.org/bin/macosx/)). <br />
+Follow the instructions below to access the R studio server on Macbook.
+#### 1. Download Docker Application
+The instructions to download Docker can be found on their website https://docs.docker.com/desktop/setup/install/mac-install/#install-and-run-docker-desktop-on-mac
+#### 2. Run command on Docker Terminal
+Run the following command to enable RStudio server to run on your browser:
+```bash
+docker run -e PASSWORD=mypassword -p 8787:8787 rocker/rstudio
+```
+Note: Set ```mypassword``` to any password you want
+#### 3. Run RStudio Server on your browser
+Use the address ```http://localhost:8787```
+#### 4. Log in credentials
+Username: rstudio 
+Password: the ```mypassword``` you set in step 2
