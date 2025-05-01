@@ -354,6 +354,44 @@ server <- function(input, output, session) {
     # navigating to a "invoice generated" page or triggering a download.
     current_page("invoice_generated")
   })
+  
+  # Dowaload pdf
+  output$download_invoice <- downloadHandler(
+    filename = function() {
+      paste0("Invoice_", Sys.Date(), ".pdf")
+    },
+    content = function(file) {
+      # Save a temporary Rmd file
+      tempReport <- file.path(tempdir(), "invoice.Rmd")
+      file.copy("invoice.Rmd", tempReport, overwrite = TRUE)
+      
+      # Parameters to pass into Rmd
+      params <- list(
+        date = Sys.Date(),
+        quote_id = input$quote_id,
+        project_id = input$project_id,
+        project_title = input$project_title,
+        project_type = input$project_id, 
+        platform = input$platform,
+        table_data = generateInvoiceTable(invoice_items_data())
+      )
+      
+      # Instead of saving in temp, define your output path (choose the directory you want)
+      output_path <- file.path("D:/", paste0("Invoice_", Sys.Date(), ".pdf"))
+      
+      rmarkdown::render(
+        tempReport,
+        output_file = output_path,  # Save directly to the desired location
+        params = params,
+        envir = new.env(parent = globalenv())
+      )
+      
+      # Move the generated file to the 'file' parameter (Shiny will then serve it to the user)
+      file.copy(output_path, file)
+      
+    }
+  )
+  
 }
 
 
