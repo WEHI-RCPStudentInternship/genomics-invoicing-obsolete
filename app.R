@@ -4,6 +4,13 @@ library(tidyr)
 library(DT)
 library(shinyjs)
 
+source("pages/invoice.R")
+# Parse data
+parse_data <- function(df) {
+  df <- df %>% replace_na(replace = as.list(rep(0, ncol(df))))
+  return(df)
+}
+
 # UI
 ui <- fluidPage(
   tags$head(
@@ -23,6 +30,8 @@ server <- function(input, output, session) {
   processed_data <- reactiveVal(NULL)
   file_path <- reactiveVal(NULL)
   invoice_items_data <- reactiveVal(NULL)
+  file_path <- reactiveVal(NULL)
+  edited_invoice_table <- reactiveVal(NULL)
   
   # Parse function
   parse_data <- function(df) {
@@ -74,8 +83,8 @@ server <- function(input, output, session) {
   # Generate invoice
   observeEvent(input$generate_invoice, {
     req(invoice_items_data())
-    showNotification("Invoice generated (logic to be implemented)", type = "message")
-    print(invoice_items_data())
+    # navigating to a "invoice generated" page or triggering a download.
+    current_page("invoice_generated")
   })
   
   # Extra info summary table
@@ -89,6 +98,16 @@ server <- function(input, output, session) {
       ))
     } else {
       return(data.frame(`Internal Extra` = NA, `External Extra` = NA))
+    }
+  })
+  
+  # Handle row selection in the data table
+  observeEvent(input$data_table_rows_selected, {
+    selected_rows <- input$data_table_rows_selected
+    if (!is.null(processed_data()) && length(selected_rows) > 0) {
+      invoice_items_data(processed_data()[selected_rows, ])
+    } else {
+      invoice_items_data(NULL)
     }
   })
   
@@ -141,6 +160,10 @@ server <- function(input, output, session) {
             )
         )
       )
+    }
+    else if (current_page() == "invoice_generated") {
+      edited_invoice_table(invoice_table())
+      invoicePage()
     }
   })
   
@@ -226,7 +249,113 @@ server <- function(input, output, session) {
       }
     }
   })
+  
+  #Render invoice preview
+  output$invoice_preview_table <- renderDataTable({
+    datatable(invoice_table(), options = list(dom = 't', paging = FALSE), rownames = FALSE)
+  })
+  
+  invoice_table <- reactive({
+    req(invoice_items_data())
+    generateInvoiceTable(invoice_items_data())
+  })
+  
+  output$editable_invoice_table <- DT::renderDataTable({
+    req(edited_invoice_table())
+    datatable(
+      edited_invoice_table(),
+      editable = TRUE, 
+      options = list(dom = 't', paging = FALSE),
+      rownames = FALSE
+    )
+  })
+  
+  
+  
+  observeEvent(input$editable_invoice_table_cell_edit, {
+    info <- input$editable_invoice_table_cell_edit
+    print(info)  # Confirm what's received from the browser
+    temp <- edited_invoice_table()
+    
+    if (is.null(temp) || is.null(info$row) || is.null(info$col) ||
+        info$row < 1 || info$col < 0) {  # col can be 0 at minimum
+      return()
+    }
+    
+    # Shift col from JavaScript (zero-based) to R (one-based)
+    col_index <- info$col + 1
+    
+    if (info$row > nrow(temp) || col_index > ncol(temp)) {
+      showNotification("Invalid edit: index out of range.", type = "error")
+      return()
+    }
+    
+    temp[info$row, col_index] <- DT::coerceValue(info$value, temp[[col_index]])
+    edited_invoice_table(temp)
+  })
+  
+  
+  
+  
+  observeEvent(input$add_row, {
+    temp <- edited_invoice_table()
+    
+    if (is.null(temp)) {
+      showNotification("No invoice table loaded. Please select items first.", type = "error")
+      return()
+    }
+    
+    new_row <- temp[1, , drop = FALSE]  # keep as data.frame
+    new_row[,] <- lapply(temp, function(col) NA)
+    edited_invoice_table(rbind(temp, new_row))
+  })
+  
+  observeEvent(input$delete_row, {
+    selected <- input$editable_invoice_table_rows_selected
+    temp <- edited_invoice_table()
+    if (!is.null(selected) && length(selected) > 0) {
+      temp <- temp[-selected, ]
+      edited_invoice_table(temp)
+    } else {
+      showNotification("No row selected for deletion.", type = "warning")
+    }
+  })
+  
+  
+  #invoice total amount
+  output$invoice_total <- renderUI({
+    table_data <- if (!is.null(edited_invoice_table())) {
+      edited_invoice_table()
+    } else {
+      invoice_table()
+    }
+    
+    req(table_data)
+    
+    total <- sum(as.numeric(table_data$Total), na.rm = TRUE)
+    
+    fluidRow(
+      column(6, tags$hr(style = "border-top: 2px solid #000; width: 100%;")),
+      column(6, tags$hr(style = "border-top: 2px solid #000; width: 100%;"))
+    )
+    
+    fluidRow(
+      column(6, h4("Total Amount:", style = "font-weight: bold;")),
+      column(6, h4(paste("$", formatC(total, format = "f", digits = 2)), 
+                   style = "text-align: right; font-weight: bold;"))
+    )
+  })
+  
+  
+  # Observe event for generating the final invoice 
+  observeEvent(input$generate_invoice, {
+    req(invoice_items_data())
+    
+    # navigating to a "invoice generated" page or triggering a download.
+    current_page("invoice_generated")
+  })
 }
+
 
 # Run the app
 shinyApp(ui = ui, server = server)
