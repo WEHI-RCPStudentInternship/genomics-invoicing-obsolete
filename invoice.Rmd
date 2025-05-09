@@ -2,7 +2,14 @@
 output:
   pdf_document:
     latex_engine: pdflatex
-    extra_dependencies: ["booktabs"]
+    extra_dependencies: 
+      - booktabs
+      - array
+      - xcolor
+      - colortbl
+      - longtable
+      - geometry
+      - float
 params:
   date: !r Sys.Date()
   quote_id: ""
@@ -13,6 +20,12 @@ params:
   table_data: NULL
 ---
 
+```{r setup, include=FALSE}
+# Load required libraries
+library(knitr)
+library(kableExtra)
+```
+
 # WEHI Advanced Genomics Facility (AGF)
 
 **Date:** `r params$date`\
@@ -22,15 +35,19 @@ params:
 **Project Type:** `r params$project_type`\
 **Platform:** `r params$platform`
 
-------------------------------------------------------------------------
+
 
 ## Invoice Items
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-knitr::kable(params$table_data, format = "latex", booktabs = TRUE, digits = 2, align = "lcccc")
+knitr::kable(params$table_data, format = "latex", booktabs = TRUE, digits = 2, align = c("l", "c", "c", "r", "r")) %>%
+  kable_styling(latex_options = c("striped", "scale_down", "hold_position")) %>%
+  kableExtra::column_spec(1, width = "6cm") %>%
+  kableExtra::column_spec(2, width = "8cm")
+
 ```
 
-------------------------------------------------------------------------
+
 
 ## Notes
 

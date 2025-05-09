@@ -414,7 +414,7 @@ server <- function(input, output, session) {
         project_title = input$project_title,
         project_type = input$project_type,  # Fix project_type here
         platform = input$platform,
-        table_data = generateInvoiceTable(invoice_items_data())
+        table_data = edited_invoice_table()
       )
       
       # Use tempdir() to save in the default system temp directory
