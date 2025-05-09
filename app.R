@@ -30,7 +30,6 @@ server <- function(input, output, session) {
   processed_data <- reactiveVal(NULL)
   file_path <- reactiveVal(NULL)
   invoice_items_data <- reactiveVal(NULL)
-  file_path <- reactiveVal(NULL)
   edited_invoice_table <- reactiveVal(NULL)
   
   # Parse function
@@ -64,27 +63,30 @@ server <- function(input, output, session) {
   })
   
   # Navigate to invoice page
+  # observeEvent(input$create_invoice_page, {
+  #   current_page("create_invoice")
+  #   output$invoice_type_ui <- renderUI({
+  #     radioButtons("invoice_type", "Select Invoice Type:",
+  #                  choices = c("Internal", "External"),
+  #                  selected = "Internal",
+  #                  inline = TRUE)
+  #   })
+  # })
+  
+  
+  
+  # Observe event for generating the final invoice 
   observeEvent(input$create_invoice_page, {
-    current_page("create_invoice")
-    output$invoice_type_ui <- renderUI({
-      radioButtons("invoice_type", "Select Invoice Type:",
-                   choices = c("Internal", "External"),
-                   selected = "Internal",
-                   inline = TRUE)
-    })
+    req(invoice_items_data())
+    
+    # navigating to a "invoice generated" page or triggering a download.
+    current_page("invoice_generated")
   })
   
   # Go back
   observeEvent(input$back_to_main, {
     current_page("main")
-    invoice_items_data(NULL)
-  })
-  
-  # Generate invoice
-  observeEvent(input$generate_invoice, {
-    req(invoice_items_data())
-    # navigating to a "invoice generated" page or triggering a download.
-    current_page("invoice_generated")
+    # invoice_items_data(NULL)
   })
   
   # Extra info summary table
@@ -148,22 +150,29 @@ server <- function(input, output, session) {
         )
       )
     } else if (current_page() == "create_invoice") {
-      fluidPage(
-        div(class = "content",
-            div(class = "center-container",
-                h2("Select Items for Invoice"),
-                uiOutput("invoice_type_ui"),
-                DT::DTOutput("selected_items_table"),
-                br(),
-                actionButton("back_to_main", "Back to Main", class = "back-button"),
-                actionButton("generate_invoice", "Generate Invoice", class = "action-button")
-            )
-        )
-      )
+      # fluidPage(
+      #   div(class = "content",
+      #       div(class = "center-container",
+      #           h2("Select Items for Invoice"),
+      #           uiOutput("invoice_type_ui"),
+      #           DT::DTOutput("selected_items_table"),
+      #           br(),
+      #           actionButton("back_to_main", "Back to Main", class = "back-button"),
+      #           actionButton("generate_invoice", "Generate Invoice", class = "action-button")
+      #       )
+      #   )
+      # )
     }
     else if (current_page() == "invoice_generated") {
-      edited_invoice_table(invoice_table())
-      invoicePage()
+ 
+
+                edited_invoice_table(invoice_table())
+                invoicePage(quote_id = generateQuoteID(),
+                            project_id = "C0000001",
+                            project_title = "None",
+                            project_type = "Internal",
+                            platform = "Xenium")
+
     }
   })
   
@@ -187,36 +196,43 @@ server <- function(input, output, session) {
               selection = "multiple")
   })
   
-  # Build invoice reactive
   observe({
-    req(processed_data(), input$data_table_rows_selected, input$invoice_type)
-    df <- processed_data()
-    selected_rows <- input$data_table_rows_selected
-    if (length(selected_rows) == 0) return()
-    
-    selected_df <- df[selected_rows, ]
-    # Decide internal or external price
-    price_col <- if (input$invoice_type == "Internal") "%PRJ surcharge" else "%EXTERNAL surcharge"
-    
-    if (!(price_col %in% names(selected_df))) {
-      showNotification("Selected price column not found.", type = "error")
-      return()
+    if (is.null(input$invoice_type)) {
+      updateRadioButtons(session, "invoice_type", selected = "Internal")
     }
-    
-    invoice_df <- selected_df[, c("Product Code", "Brand", "Product Category", "Product Name" ,price_col,"Additional reagent Cost (not incl. in kit)")]
-    names(invoice_df)[names(invoice_df) == price_col] <- "Base Price"
-    additional_col <- "Additional reagent Cost (not incl. in kit)"
-    names(invoice_df)[names(invoice_df) == additional_col] <- "Additional Cost"
-    
-    # Price = Original price + additional cost
-    invoice_df$Price <- invoice_df$`Base Price` + invoice_df$`Additional Cost`
-    
-    # Discount part
-    invoice_df$Discount <- 0
-    invoice_df$`New Price` <- invoice_df$Price
-    
-    invoice_items_data(invoice_df)
   })
+  
+  # # Build invoice reactive
+  # observe({
+  #   req(processed_data(), input$data_table_rows_selected)
+  #   df <- processed_data()
+  #   selected_rows <- input$data_table_rows_selected
+  #   if (length(selected_rows) == 0) return()
+  #   
+  #   
+  #   selected_df <- df[selected_rows, ]
+  #   # Decide internal or external price
+  #   price_col <- if (input$invoice_type == "Internal") "%PRJ surcharge" else "%EXTERNAL surcharge"
+  #   
+  #   if (!(price_col %in% names(selected_df))) {
+  #     showNotification("Selected price column not found.", type = "error")
+  #     return()
+  #   }
+  #   
+  #   invoice_df <- selected_df[, c("Product Code", "Brand", "Product Category", "Product Name" ,price_col,"Additional reagent Cost (not incl. in kit)")]
+  #   names(invoice_df)[names(invoice_df) == price_col] <- "Base Price"
+  #   additional_col <- "Additional reagent Cost (not incl. in kit)"
+  #   names(invoice_df)[names(invoice_df) == additional_col] <- "Additional Cost"
+  #   
+  #   # Price = Original price + additional cost
+  #   invoice_df$Price <- invoice_df$`Base Price` + invoice_df$`Additional Cost`
+  #   
+  #   # Discount part
+  #   invoice_df$Discount <- 0
+  #   invoice_df$`New Price` <- invoice_df$Price
+  #   
+  #   invoice_items_data(invoice_df)
+  # })
   
   # Render selected items table (Discount editable)
   output$selected_items_table <- DT::renderDT({
@@ -249,6 +265,13 @@ server <- function(input, output, session) {
       }
     }
   })
+  
+  # Generate a custom Quote ID
+  generateQuoteID <- function() {
+    date_part <- format(Sys.Date(), "%Y%m%d")
+    random_part <- sprintf("%04d", sample(0:9999, 1))
+    paste0("WEHI-AGF-", date_part, "-", random_part)
+  }
   
   #Render invoice preview
   output$invoice_preview_table <- renderDataTable({
@@ -297,7 +320,7 @@ server <- function(input, output, session) {
   
   
   
-  observeEvent(input$add_row, {
+   observeEvent(input$add_row, {
     temp <- edited_invoice_table()
     
     if (is.null(temp)) {
@@ -305,8 +328,33 @@ server <- function(input, output, session) {
       return()
     }
     
-    new_row <- temp[1, , drop = FALSE]  # keep as data.frame
-    new_row[,] <- lapply(temp, function(col) NA)
+    # Define dropdown options
+    item_options <- c(
+      "Chromium Next GEM Single Cell 5’ HT Kit v2",
+      "Library Construction Kit",
+      "Dual Index kit TT or TN Set A",
+      "Chromium Next GEM Chip N Single Cell Kit"
+    )
+    
+    description_options <- c(
+      "per capture",
+      "per chip",
+      "per sample",
+      "per HashTag",
+      "per test vial"
+    )
+
+    # Create new row with dropdown icons
+    new_row <- data.frame(
+      Item = item_options[1],
+      Description = description_options[1],
+      Quantity = 1,
+      Amount = 100,
+      Total = 100,
+      stringsAsFactors = FALSE
+    )
+    
+    # Append the new row
     edited_invoice_table(rbind(temp, new_row))
   })
   
@@ -347,15 +395,8 @@ server <- function(input, output, session) {
   })
   
   
-  # Observe event for generating the final invoice 
-  observeEvent(input$generate_invoice, {
-    req(invoice_items_data())
-    
-    # navigating to a "invoice generated" page or triggering a download.
-    current_page("invoice_generated")
-  })
   
-  # Dowaload pdf
+  
   output$download_invoice <- downloadHandler(
     filename = function() {
       paste0("Invoice_", Sys.Date(), ".pdf")
@@ -371,24 +412,23 @@ server <- function(input, output, session) {
         quote_id = input$quote_id,
         project_id = input$project_id,
         project_title = input$project_title,
-        project_type = input$project_id, 
+        project_type = input$project_type,  # Fix project_type here
         platform = input$platform,
         table_data = generateInvoiceTable(invoice_items_data())
       )
       
-      # Instead of saving in temp, define your output path (choose the directory you want)
-      output_path <- file.path("D:/", paste0("Invoice_", Sys.Date(), ".pdf"))
+      # Use tempdir() to save in the default system temp directory
+      output_path <- file.path(tempdir(), paste0("Invoice_", Sys.Date(), ".pdf"))
       
       rmarkdown::render(
         tempReport,
-        output_file = output_path,  # Save directly to the desired location
+        output_file = output_path,
         params = params,
         envir = new.env(parent = globalenv())
       )
       
       # Move the generated file to the 'file' parameter (Shiny will then serve it to the user)
       file.copy(output_path, file)
-      
     }
   )
   

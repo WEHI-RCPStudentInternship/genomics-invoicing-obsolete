@@ -1,5 +1,5 @@
 
-invoicePage <- function() {
+invoicePage <- function(quote_id, project_id, project_title, project_type, platform) {
   fluidPage(
     div(class = "content",
         div(class = "center-container",
@@ -10,25 +10,25 @@ invoicePage <- function() {
             ),
             fluidRow(
               column(2, strong("Quote ID:")),
-              column(10, textInput("quote_id", NULL, placeholder = "Enter Quote ID", width = "50%"))
+              column(10, textInput("quote_id", NULL, value = quote_id, width = "50%"))
             ),
             br(),
             fluidRow(
               column(2, strong("Project ID:")),
-              column(10, textInput("project_id", NULL, placeholder = "Enter Project ID", width = "50%"))
+              column(10, textInput("project_id", NULL, value = project_id, width = "50%"))
             ),
             fluidRow(
               column(2, strong("Project Title:")),
-              column(10, textInput("project_title", NULL, placeholder = "Enter Project Title", width = "50%"))
+              column(10, textInput("project_title", NULL, value = project_title, width = "50%"))
             ),
             br(),
             fluidRow(
               column(2, strong("Project Type:")),
-              column(10, textInput("project_id", NULL, placeholder = "Enter Project Type", width = "50%"))
+              column(10, textInput("project_id", NULL, value = project_type, width = "50%"))
             ),
             fluidRow(
               column(2, strong("Platform:")),
-              column(10, textInput("platform", NULL, placeholder = "Enter Platform", width = "50%"))
+              column(10, textInput("platform", NULL, value = platform, width = "50%"))
             ),
             br(),
             DT::dataTableOutput("editable_invoice_table"),
@@ -54,13 +54,15 @@ invoicePage <- function() {
   )
 }
 
-generateInvoiceTable <- function(invoice_items) {
-  req(invoice_items)
+generateInvoiceTable <- function(invoice_items_data) {
+  req(invoice_items_data)
   
-  items <- invoice_items
+  items <- invoice_items_data
   
   items$Quantity <- 1
-  items$Amount <- as.numeric(items$`Base Price`)
+
+  
+  items$Amount <- as.numeric(items$`%PRJ surcharge`)
   items$Total <- items$Quantity * items$Amount
   items$Description <- paste(items$Brand, items$`Product Category`, sep = " - ")
   
