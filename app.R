@@ -77,9 +77,19 @@ server <- function(input, output, session) {
   
   # Observe event for generating the final invoice 
   observeEvent(input$create_invoice_page, {
-    req(invoice_items_data())
-    
-    # navigating to a "invoice generated" page or triggering a download.
+    if (is.null(invoice_items_data()) || nrow(invoice_items_data()) == 0) {
+      # If empty, initialize it with an empty DataFrame
+      invoice_items_data(data.frame(
+        Item = character(0),
+        Description = character(0),
+        Quantity = numeric(0),
+        Amount = numeric(0),
+        Total = numeric(0),
+        stringsAsFactors = FALSE
+      ))
+    }
+    # Navigate to the invoice page
+    edited_invoice_table(invoice_table())
     current_page("invoice_generated")
   })
   
@@ -279,9 +289,21 @@ server <- function(input, output, session) {
   })
   
   invoice_table <- reactive({
-    req(invoice_items_data())
-    generateInvoiceTable(invoice_items_data())
+    if (is.null(invoice_items_data()) || nrow(invoice_items_data()) == 0) {
+      # If no items are selected, return an empty dataframe with the correct structure
+      data.frame(
+        Item = character(0),
+        Description = character(0),
+        Quantity = numeric(0),
+        Amount = numeric(0),
+        Total = numeric(0),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      generateInvoiceTable(invoice_items_data())
+    }
   })
+  
   
   output$editable_invoice_table <- DT::renderDataTable({
     req(edited_invoice_table())
@@ -406,6 +428,13 @@ server <- function(input, output, session) {
       tempReport <- file.path(tempdir(), "invoice.Rmd")
       file.copy("invoice.Rmd", tempReport, overwrite = TRUE)
       
+      # If the table is empty, pass an empty DataFrame
+      pdf_table_data <- if (!is.null(edited_invoice_table()) && nrow(edited_invoice_table()) > 0) {
+        generateInvoiceTable(edited_invoice_table())
+      } else {
+        data.frame(Item = character(0), Description = character(0), Quantity = numeric(0), Amount = numeric(0), Total = numeric(0))
+      }
+      
       # Parameters to pass into Rmd
       params <- list(
         date = Sys.Date(),
@@ -414,7 +443,7 @@ server <- function(input, output, session) {
         project_title = input$project_title,
         project_type = input$project_type,  # Fix project_type here
         platform = input$platform,
-        table_data = edited_invoice_table()
+        table_data = pdf_table_data
       )
       
       # Use tempdir() to save in the default system temp directory
