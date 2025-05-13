@@ -1,0 +1,58 @@
+---
+output:
+  pdf_document:
+    latex_engine: pdflatex
+    extra_dependencies: 
+      - booktabs
+      - array
+      - xcolor
+      - colortbl
+      - longtable
+      - geometry
+      - float
+params:
+  date: !r Sys.Date()
+  quote_id: ""
+  project_id: ""
+  project_title: ""
+  project_type: ""
+  platform: ""
+  table_data: NULL
+---
+
+```{r setup, include=FALSE}
+# Load required libraries
+library(knitr)
+library(kableExtra)
+```
+
+# WEHI Advanced Genomics Facility (AGF)
+
+**Date:** `r params$date`\
+**Quote ID:** `r params$quote_id`\
+**Project ID:** `r params$project_id`\
+**Project Title:** `r params$project_title`\
+**Project Type:** `r params$project_type`\
+**Platform:** `r params$platform`
+
+
+
+## Invoice Items
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::kable(params$table_data, format = "latex", booktabs = TRUE, digits = 2, align = c("l", "c", "c", "r", "r")) %>%
+  kable_styling(latex_options = c("striped", "scale_down", "hold_position")) %>%
+  kableExtra::column_spec(1, width = "6cm") %>%
+  kableExtra::column_spec(2, width = "8cm")
+
+```
+
+
+
+## Notes
+
+-   All prices are in **AUD** and exclude **GST**.
+-   Cost estimates and quotes are valid for **4 weeks**.
+-   Purchase orders and additional price enquiries should be directed to:\
+    **Daniela Zalcenstein**\
+    [*zalcenstein.d\@wehi.edu.au*](mailto:zalcenstein.d@wehi.edu.au){.email}
