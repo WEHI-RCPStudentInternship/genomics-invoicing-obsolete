@@ -88,8 +88,9 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       ))
     }
-    # Navigate to the invoice page
-    edited_invoice_table(invoice_table())
+    req(invoice_items_data())
+    
+    # navigating to a "invoice generated" page or triggering a download.
     current_page("invoice_generated")
   })
   
@@ -304,7 +305,6 @@ server <- function(input, output, session) {
     }
   })
   
-  
   output$editable_invoice_table <- DT::renderDataTable({
     req(edited_invoice_table())
     datatable(
@@ -427,10 +427,8 @@ server <- function(input, output, session) {
       # Save a temporary Rmd file
       tempReport <- file.path(tempdir(), "invoice.Rmd")
       file.copy("invoice.Rmd", tempReport, overwrite = TRUE)
-      
-      # If the table is empty, pass an empty DataFrame
       pdf_table_data <- if (!is.null(edited_invoice_table()) && nrow(edited_invoice_table()) > 0) {
-        generateInvoiceTable(edited_invoice_table())
+        edited_invoice_table()
       } else {
         data.frame(Item = character(0), Description = character(0), Quantity = numeric(0), Amount = numeric(0), Total = numeric(0))
       }
@@ -441,7 +439,7 @@ server <- function(input, output, session) {
         quote_id = input$quote_id,
         project_id = input$project_id,
         project_title = input$project_title,
-        project_type = input$project_type,  # Fix project_type here
+        project_type = input$project_type,
         platform = input$platform,
         table_data = pdf_table_data
       )
