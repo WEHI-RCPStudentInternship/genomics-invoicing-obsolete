@@ -1,0 +1,9 @@
+"DT"
+"readxl"
+"rmarkdown"
+"shiny"
+"shinyjs"
+"tidyr"
+"kableExtra"
+"knitr"
+
