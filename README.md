@@ -1,4 +1,8 @@
-# genomics-invoicing
+# genomics-invoicing-obsolete
+
+## NOTE: this repo is now obsolete as at 5th January 2026. Please [go to the new Genomics Invoicing repo](https://github.com/WEHI-RCPStudentInternship/genomics-invoicing).
+
+
 This is a project intended to automate the generation of genomic invoices to customers.
 ## For future developers
 ### Windows users
